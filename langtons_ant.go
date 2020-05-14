@@ -11,6 +11,24 @@ import (
 
 const winWidth, winHeight int = 800, 600
 
+func drawGrid(renderer *sdl.Renderer, nx, ny int32) {
+    bw := int32(winWidth)/nx
+    bh := int32(winHeight)/ny
+
+    for y  := int32(0); y < ny; y++ {
+        for x := int32(0); x < nx; x++ {
+            ret := gfx.BoxColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, sdl.Color{123, 50, 255, 255})
+            if !ret {
+                fmt.Println("Error while drawing box")
+            }
+            ret = gfx.RectangleColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, sdl.Color{0, 0, 0, 255})
+            if !ret {
+                fmt.Println("Error while drawing rect")
+            }
+        }
+    }
+}
+
 func main() {
     err := sdl.Init(sdl.INIT_EVERYTHING)
     if err != nil {
@@ -61,15 +79,7 @@ func main() {
             }
         }
 
-        ret := gfx.BoxColor(renderer, 10, 10, 100, 100, sdl.Color{123, 50, 255, 100})
-        if ret != true {
-            fmt.Println("Error while drawing box")
-        }
-        ret = gfx.RectangleColor(renderer, 10, 10, 1000, 1000, sdl.Color{123, 50, 255, 100})
-        if ret != true {
-            fmt.Println("Error while drawing rect")
-        }
-
+        drawGrid(renderer, 5, 5);
         renderer.Present()
 
 
