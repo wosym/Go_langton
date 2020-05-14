@@ -10,14 +10,51 @@ import (
 )
 
 const winWidth, winHeight int = 800, 600
+const gridDim int = 10      //size of grid
+const stepTime = 200        //time between ant steps in ms
 
-func drawGrid(renderer *sdl.Renderer, nx, ny int32) {
+type position struct {
+    x,y int
+}
+
+const (
+    NORTH = iota
+    EAST
+    SOUTH
+    WEST
+    OF
+)
+func printGrid(grid [][]int) {
+    for y := 0; y < gridDim; y++ {
+        fmt.Println(grid[y])
+    }
+}
+func drawAnt(renderer *sdl.Renderer, nx, ny int32, antpos position) {
     bw := int32(winWidth)/nx
     bh := int32(winHeight)/ny
+    cx := bw * int32(antpos.x) + bw/2
+    cy := bh * int32(antpos.y) + bh/2
+    //TODO: make ant ellipse-form based on direction?
+
+    ret := gfx.FilledEllipseColor(renderer, cx, cy, bw/2, bh/2, sdl.Color{100, 50, 0, 255})
+    if !ret {
+        fmt.Println("Error while drawing box")
+    }
+}
+func drawGrid(renderer *sdl.Renderer, grid [][]int, nx, ny int32) {
+    bw := int32(winWidth)/nx
+    bh := int32(winHeight)/ny
+    var ret bool
 
     for y  := int32(0); y < ny; y++ {
         for x := int32(0); x < nx; x++ {
-            ret := gfx.BoxColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, sdl.Color{123, 50, 255, 255})
+            //TODO: get color from LUT
+            
+            if grid[y][x] == 0 {
+                ret = gfx.BoxColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, sdl.Color{123, 50, 255, 255})
+            } else {
+                ret = gfx.BoxColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, sdl.Color{10, 250, 40, 255})
+            }
             if !ret {
                 fmt.Println("Error while drawing box")
             }
@@ -27,6 +64,45 @@ func drawGrid(renderer *sdl.Renderer, nx, ny int32) {
             }
         }
     }
+}
+
+func moveAnt(grid [][]int, antpos *position, antdir *int){
+    //move
+    switch *antdir {    //TODO: check for out of bounds!    --> what to do then? Stop program?
+        case NORTH:
+            (*antpos).y--   //pixel coordinates origin is in top left corner
+        case EAST:
+            (*antpos).x++
+        case SOUTH:
+            (*antpos).y++
+        case WEST:
+            (*antpos).x--
+        default:
+            fmt.Println("Error moving ant: illegal direction")
+    }
+
+    //rotate based on the square we land on
+    if grid[(*antpos).y][(*antpos).x] == 0 {    //TODO: check in lookup table for more complex patterns
+        *antdir++;
+    } else {
+        *antdir--;
+    }
+
+    //Check for overflows
+    if *antdir >= OF{
+        *antdir = NORTH;
+    } else if *antdir <= -1 {
+        *antdir = WEST;
+    }
+
+    //Update cell
+    grid[(*antpos).y][(*antpos).x]++
+    if grid[(*antpos).y][(*antpos).x] >= 2 {    //TODO: this number should be based on the amount of possibilities in the LUT
+        grid[(*antpos).y][(*antpos).x] = 0
+    }
+
+
+
 }
 
 func main() {
@@ -58,11 +134,25 @@ func main() {
     }
     defer tex.Destroy()
 
+    //Create grid for the ant
+    grid := make([][]int, gridDim)
+    for i := 0; i < gridDim; i++ {
+        grid[i] = make([]int, gridDim)
+    }
+
+    antpos := position{gridDim/2, gridDim/2}
+    antdir := NORTH
+    fmt.Println("Starting position for ant: ", antpos, "in direction: ", antdir)
+
     var frameStart time.Time
     var elapsedTime float32
     var running bool = true
     for running {
         frameStart = time.Now()
+
+        moveAnt(grid, &antpos, &antdir)
+        fmt.Println("Position: ", antpos, "direction: ", antdir)
+
 
         for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
             switch t := event.(type) {
@@ -79,9 +169,12 @@ func main() {
             }
         }
 
-        drawGrid(renderer, 5, 5);
+        drawGrid(renderer, grid, int32(gridDim), int32(gridDim));
+        drawAnt(renderer, int32(gridDim), int32(gridDim), antpos);
         renderer.Present()
 
+
+    printGrid(grid)
 
     elapsedTime = float32(time.Since(frameStart).Seconds())
     if elapsedTime < .005 {
@@ -91,6 +184,7 @@ func main() {
 
     fmt.Println("framerate: ", 1/elapsedTime)
 
+    sdl.Delay(stepTime)
 
     }
 
