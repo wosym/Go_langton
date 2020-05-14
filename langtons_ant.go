@@ -9,9 +9,9 @@ import (
 	"github.com/yakshaveinc/go-keycodes"
 )
 
-const winWidth, winHeight int = 800, 600
-const gridDim int = 10      //size of grid
-const stepTime = 200        //time between ant steps in ms
+const winWidth, winHeight int = 1000, 1000
+const gridDim int = 201      //size of grid
+const stepTime = 0        //time between ant steps in ms
 
 type position struct {
     x,y int
@@ -66,7 +66,7 @@ func drawGrid(renderer *sdl.Renderer, grid [][]int, nx, ny int32) {
     }
 }
 
-func moveAnt(grid [][]int, antpos *position, antdir *int){
+func moveAnt(grid [][]int, antpos *position, antdir *int) bool {
     //move
     switch *antdir {    //TODO: check for out of bounds!    --> what to do then? Stop program?
         case NORTH:
@@ -79,6 +79,9 @@ func moveAnt(grid [][]int, antpos *position, antdir *int){
             (*antpos).x--
         default:
             fmt.Println("Error moving ant: illegal direction")
+    }
+    if (*antpos).x < 0 || (*antpos).y < 0 || (*antpos).x > gridDim-1 || (*antpos).y > gridDim-1 {
+        return true     //pause
     }
 
     //rotate based on the square we land on
@@ -100,6 +103,8 @@ func moveAnt(grid [][]int, antpos *position, antdir *int){
     if grid[(*antpos).y][(*antpos).x] >= 2 {    //TODO: this number should be based on the amount of possibilities in the LUT
         grid[(*antpos).y][(*antpos).x] = 0
     }
+
+    return false    //don't pause
 
 
 
@@ -147,12 +152,22 @@ func main() {
     var frameStart time.Time
     var elapsedTime float32
     var running bool = true
+    var paused bool = false
     for running {
         frameStart = time.Now()
 
-        moveAnt(grid, &antpos, &antdir)
-        fmt.Println("Position: ", antpos, "direction: ", antdir)
 
+        if !paused {
+            paused = moveAnt(grid, &antpos, &antdir)
+            fmt.Println("Position: ", antpos, "direction: ", antdir)
+
+
+            drawGrid(renderer, grid, int32(gridDim), int32(gridDim));
+            drawAnt(renderer, int32(gridDim), int32(gridDim), antpos);
+            renderer.Present()
+
+            //printGrid(grid)
+        }
 
         for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
             switch t := event.(type) {
@@ -169,12 +184,6 @@ func main() {
             }
         }
 
-        drawGrid(renderer, grid, int32(gridDim), int32(gridDim));
-        drawAnt(renderer, int32(gridDim), int32(gridDim), antpos);
-        renderer.Present()
-
-
-    printGrid(grid)
 
     elapsedTime = float32(time.Since(frameStart).Seconds())
     if elapsedTime < .005 {
