@@ -3,15 +3,16 @@ package main
 import (
 	"fmt"
     "time"
+    "math"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/gfx"
 	"github.com/yakshaveinc/go-keycodes"
 )
 
-const winWidth, winHeight int = 1000, 1000
-const gridDim int = 201      //size of grid
-const stepTime = 0        //time between ant steps in ms
+const winWidth, winHeight int = 500, 500
+const gridDim int = 50     //size of grid
+const stepTime = 500        //time between ant steps in ms
 
 type position struct {
     x,y int
@@ -42,8 +43,8 @@ func drawAnt(renderer *sdl.Renderer, nx, ny int32, antpos position) {
     }
 }
 func drawGrid(renderer *sdl.Renderer, grid [][]int, nx, ny int32) {
-    bw := int32(winWidth)/nx
-    bh := int32(winHeight)/ny
+    bw := int32(math.Round(float64(winWidth)/float64(nx)))  //TODO: still not 100% correct. math.Round didn't solve everything. There still is a black band with some gridDims. math.Round made it a bit better though.
+    bh := int32(math.Round(float64(winHeight)/float64(ny)))
     var ret bool
 
     for y  := int32(0); y < ny; y++ {
@@ -64,6 +65,9 @@ func drawGrid(renderer *sdl.Renderer, grid [][]int, nx, ny int32) {
             }
         }
     }
+
+    
+
 }
 
 func moveAnt(grid [][]int, antpos *position, antdir *int) bool {
