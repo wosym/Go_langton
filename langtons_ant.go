@@ -4,30 +4,22 @@ import (
 	"fmt"
     "time"
     "math"
+    "math/rand"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/gfx"
 	"github.com/yakshaveinc/go-keycodes"
 )
 
-const winWidth, winHeight int = 500, 500
-const gridDim int = 50     //size of grid
-const stepTime = 20        //time between ant steps in ms
+const winWidth, winHeight int = 1500, 1500
+const gridDim int = 200     //size of grid
+const stepTime = 0        //time between ant steps in ms
 
 //Pattern: L: true, R: false
-var pattern = []bool{true,false,false,false,false,false,true,true,false}   //TODO: selectable?
-var colorList = []sdl.Color{          //TODO: dynamic based on number of entries in patternlist?
-    {10, 90, 10, 255},
-    {80, 110, 30, 255},
-    {40, 130, 40, 255},
-    {254, 80, 90, 255},
-    {100, 10, 40, 255},
-    {110, 3, 70, 255},
-    {110, 150, 80, 255},
-    {210, 250, 10, 255},
-    {160, 60, 30, 255},
-    {10, 0, 80, 255},
-}
+//var pattern = []bool{true,false,false,false,false,false,true,true,false}   //TODO: selectable?
+var pattern = []bool{true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false}
+var colorList = []sdl.Color{}
+var shuffleColors = true
 
 type position struct {
     x,y int
@@ -40,6 +32,66 @@ const (
     WEST
     OF
 )
+
+//TODO: move these color-util functions to seperate file
+type HSV struct {
+	H, S, V float64
+}
+
+type RGB struct {
+	R, G, B float64
+}
+
+func (c HSV) RGB() sdl.Color {
+	var r, g, b float64
+	if c.S == 0 { //HSV from 0 to 1
+		r = c.V * 255
+		g = c.V * 255
+		b = c.V * 255
+	} else {
+		h := c.H/360 * 6
+		if h == 6 {
+			h = 0
+		} //H must be < 1
+		i := math.Floor(h) //Or ... var_i = floor( var_h )
+		v1 := c.V * (1 - c.S)
+		v2 := c.V * (1 - c.S*(h-i))
+		v3 := c.V * (1 - c.S*(1-(h-i)))
+
+		if i == 0 {
+			r = c.V
+			g = v3
+			b = v1
+		} else if i == 1 {
+			r = v2
+			g = c.V
+			b = v1
+		} else if i == 2 {
+			r = v1
+			g = c.V
+			b = v3
+		} else if i == 3 {
+			r = v1
+			g = v2
+			b = c.V
+		} else if i == 4 {
+			r = v3
+			g = v1
+			b = c.V
+		} else {
+			r = c.V
+			g = v1
+			b = v2
+		}
+
+		r = r * 255 //RGB results from 0 to 255
+		g = g * 255
+		b = b * 255
+	}
+	return sdl.Color{uint8(r), uint8(g), uint8(b), 255}
+
+}
+
 func printGrid(grid [][]int) {
     for y := 0; y < gridDim; y++ {
         fmt.Println(grid[y])
@@ -132,6 +184,7 @@ func moveAnt(grid [][]int, antpos *position, antdir *int) bool {
 
 }
 
+
 func main() {
     err := sdl.Init(sdl.INIT_EVERYTHING)
     if err != nil {
@@ -165,6 +218,19 @@ func main() {
     grid := make([][]int, gridDim)
     for i := 0; i < gridDim; i++ {
         grid[i] = make([]int, gridDim)
+    }
+
+
+    //fill colorList based on patternlength //TODO: seperate function?  //TODO: add shuffle option to make highways more clearly
+    spacing := float64(360 / len(pattern))
+    var tmpCol = HSV{}
+    for i := 0; i<=len(pattern); i++ {
+        tmpCol = HSV{float64(i)*spacing, 0.5 ,0.5}
+        colorList = append(colorList, tmpCol.RGB())
+    }
+    if shuffleColors {
+        rand.Seed(time.Now().UnixNano())
+        rand.Shuffle(len(colorList), func(i, j int) {colorList[i], colorList[j]=colorList[j], colorList[i]})
     }
 
     antpos := position{gridDim/2, gridDim/2}
