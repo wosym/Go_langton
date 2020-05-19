@@ -12,7 +12,22 @@ import (
 
 const winWidth, winHeight int = 500, 500
 const gridDim int = 50     //size of grid
-const stepTime = 500        //time between ant steps in ms
+const stepTime = 20        //time between ant steps in ms
+
+//Pattern: L: true, R: false
+var pattern = []bool{true,false,false,false,false,false,true,true,false}   //TODO: selectable?
+var colorList = []sdl.Color{          //TODO: dynamic based on number of entries in patternlist?
+    {10, 90, 10, 255},
+    {80, 110, 30, 255},
+    {40, 130, 40, 255},
+    {254, 80, 90, 255},
+    {100, 10, 40, 255},
+    {110, 3, 70, 255},
+    {110, 150, 80, 255},
+    {210, 250, 10, 255},
+    {160, 60, 30, 255},
+    {10, 0, 80, 255},
+}
 
 type position struct {
     x,y int
@@ -49,16 +64,14 @@ func drawGrid(renderer *sdl.Renderer, grid [][]int, nx, ny int32) {
 
     for y  := int32(0); y < ny; y++ {
         for x := int32(0); x < nx; x++ {
-            //TODO: get color from LUT
-            
-            if grid[y][x] == 0 {
-                ret = gfx.BoxColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, sdl.Color{123, 50, 255, 255})
-            } else {
-                ret = gfx.BoxColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, sdl.Color{10, 250, 40, 255})
-            }
+            ret = gfx.BoxColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, colorList[grid[y][x]])
             if !ret {
                 fmt.Println("Error while drawing box")
             }
+
+
+
+
             ret = gfx.RectangleColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, sdl.Color{0, 0, 0, 255})
             if !ret {
                 fmt.Println("Error while drawing rect")
@@ -72,7 +85,7 @@ func drawGrid(renderer *sdl.Renderer, grid [][]int, nx, ny int32) {
 
 func moveAnt(grid [][]int, antpos *position, antdir *int) bool {
     //move
-    switch *antdir {    //TODO: check for out of bounds!    --> what to do then? Stop program?
+    switch *antdir {
         case NORTH:
             (*antpos).y--   //pixel coordinates origin is in top left corner
         case EAST:
@@ -89,10 +102,15 @@ func moveAnt(grid [][]int, antpos *position, antdir *int) bool {
     }
 
     //rotate based on the square we land on
-    if grid[(*antpos).y][(*antpos).x] == 0 {    //TODO: check in lookup table for more complex patterns
-        *antdir++;
-    } else {
+    if grid[(*antpos).y][(*antpos).x] >= len(pattern) {
+        fmt.Println("cell has invalid value! This should never happen!")
+        return true
+    }
+
+    if pattern[grid[(*antpos).y][(*antpos).x]] {
         *antdir--;
+    } else {
+        *antdir++;
     }
 
     //Check for overflows
@@ -104,7 +122,7 @@ func moveAnt(grid [][]int, antpos *position, antdir *int) bool {
 
     //Update cell
     grid[(*antpos).y][(*antpos).x]++
-    if grid[(*antpos).y][(*antpos).x] >= 2 {    //TODO: this number should be based on the amount of possibilities in the LUT
+    if grid[(*antpos).y][(*antpos).x] >= len(pattern) {
         grid[(*antpos).y][(*antpos).x] = 0
     }
 
