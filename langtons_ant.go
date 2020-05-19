@@ -16,8 +16,8 @@ const gridDim int = 200     //size of grid
 const stepTime = 0        //time between ant steps in ms
 
 //Pattern: L: true, R: false
-//var pattern = []bool{true,false,false,false,false,false,true,true,false}   //TODO: selectable?
-var pattern = []bool{true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false}
+var pattern = []bool{true,false,false,false,false,false,true,true,false}   //TODO: selectable?
+//var pattern = []bool{true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false,true,false,false,false,false,false,true,true,false}
 var colorList = []sdl.Color{}
 var shuffleColors = true
 
@@ -97,11 +97,13 @@ func printGrid(grid [][]int) {
         fmt.Println(grid[y])
     }
 }
-func drawAnt(renderer *sdl.Renderer, nx, ny int32, antpos position) {
-    bw := int32(winWidth)/nx
-    bh := int32(winHeight)/ny
-    cx := bw * int32(antpos.x) + bw/2
-    cy := bh * int32(antpos.y) + bh/2
+func drawAnt(renderer *sdl.Renderer, nx, ny, visRad int32, antpos position) {
+    bw := int32(winWidth)/(visRad*2)
+    bh := int32(winHeight)/(visRad*2)
+    startX := int32(nx/2) - visRad
+    startY := int32(ny/2) - visRad
+    cx := bw * (int32(antpos.x)-startX) + bw/2
+    cy := bh * (int32(antpos.y)-startY) + bh/2
     //TODO: make ant ellipse-form based on direction?
 
     ret := gfx.FilledEllipseColor(renderer, cx, cy, bw/2, bh/2, sdl.Color{100, 50, 0, 255})
@@ -109,14 +111,19 @@ func drawAnt(renderer *sdl.Renderer, nx, ny int32, antpos position) {
         fmt.Println("Error while drawing box")
     }
 }
-func drawGrid(renderer *sdl.Renderer, grid [][]int, nx, ny int32) {
-    bw := int32(math.Round(float64(winWidth)/float64(nx)))  //TODO: still not 100% correct. math.Round didn't solve everything. There still is a black band with some gridDims. math.Round made it a bit better though.
-    bh := int32(math.Round(float64(winHeight)/float64(ny)))
+func drawGrid(renderer *sdl.Renderer, grid [][]int, nx, ny, visRad int32) {
+    bw := int32(math.Round(float64(winWidth)/float64(visRad*2)))  //TODO: still not 100% correct. math.Round didn't solve everything. There still is a black band with some gridDims. math.Round made it a bit better though.
+    bh := int32(math.Round(float64(winHeight)/float64(visRad*2)))
     var ret bool
 
-    for y  := int32(0); y < ny; y++ {
-        for x := int32(0); x < nx; x++ {
-            ret = gfx.BoxColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, colorList[grid[y][x]])
+    startX := int32(nx/2) - visRad
+    endX := int32(nx/2) + visRad
+    startY := int32(ny/2) - visRad
+    endY := int32(nx/2) + visRad
+
+    for y  := startY; y < endY; y++ {
+        for x := startX; x < endX; x++ {
+            ret = gfx.BoxColor(renderer, (x-startX)*bw, (y-startY)*bh, ((x-startX)+1)*bw, ((y-startY)+1)*bh, colorList[grid[y][x]])
             if !ret {
                 fmt.Println("Error while drawing box")
             }
@@ -124,7 +131,7 @@ func drawGrid(renderer *sdl.Renderer, grid [][]int, nx, ny int32) {
 
 
 
-            ret = gfx.RectangleColor(renderer, x*bw, y*bh, (x+1)*bw, (y+1)*bh, sdl.Color{0, 0, 0, 255})
+            ret = gfx.RectangleColor(renderer, (x-startX)*bw, (y-startY)*bh, ((x-startX)+1)*bw, ((y-startY)+1)*bh, sdl.Color{0, 0, 0, 255})
             if !ret {
                 fmt.Println("Error while drawing rect")
             }
@@ -183,7 +190,12 @@ func moveAnt(grid [][]int, antpos *position, antdir *int) bool {
 
 
 }
-
+func IntegerAbs(x int) int {   //TODO: move to util
+	if x < 0 {
+		return -x
+	}
+	return x
+}
 
 func main() {
     err := sdl.Init(sdl.INIT_EVERYTHING)
@@ -241,6 +253,7 @@ func main() {
     var elapsedTime float32
     var running bool = true
     var paused bool = false
+    var visRad int32 = 10     //inital visible grid
     for running {
         frameStart = time.Now()
 
@@ -250,9 +263,16 @@ func main() {
             fmt.Println("Position: ", antpos, "direction: ", antdir)
 
 
-            drawGrid(renderer, grid, int32(gridDim), int32(gridDim));
-            drawAnt(renderer, int32(gridDim), int32(gridDim), antpos);
+            drawGrid(renderer, grid, int32(gridDim), int32(gridDim), visRad);
+            drawAnt(renderer, int32(gridDim), int32(gridDim), visRad, antpos);
             renderer.Present()
+
+            //calculate ant distance from center
+            dx := IntegerAbs(int(gridDim)/2 - antpos.x)
+            dy := IntegerAbs(int(gridDim)/2 - antpos.y)
+            if dx+2 > int(visRad) || dy+2 > int(visRad) {   //Added +2 so it will zoom out sooner
+                visRad += 5;
+            }
 
             //printGrid(grid)
         }
